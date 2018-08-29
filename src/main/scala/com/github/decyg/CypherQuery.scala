@@ -5,13 +5,11 @@ trait CypherQuery {
 }
 
 // this is the root class?
-case class QueryStart(){
+case class QueryRoot(){
 
-  def create(cypherQuery: CypherQuery) = {
-    cypherQuery.asCypher
-  }
+  def MATCH = MatchNode()
+  def UNWIND = UnwindNode()
 
-  def MATCH = { MatchNode() }
 }
 
 trait ReadingClause extends CypherQuery{
@@ -78,8 +76,8 @@ trait MultiPartQuery extends CypherQuery with SingleQuery
 object yeet{
   println(
 
-    QueryStart()
-      MATCH
+    QueryRoot()
+      UNWIND
 
 
 
