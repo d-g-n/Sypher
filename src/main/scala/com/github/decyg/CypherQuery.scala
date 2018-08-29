@@ -12,10 +12,16 @@ case class QueryRoot(){
 
 }
 
-trait ReadingClause extends CypherQuery{
-  def RETURN = {
-    new ReturnNode()
-  }
+case class ReadingClause extends CypherQuery{
+
+  def CREATE = CreateNode()
+  def MERGE = MergeNode()
+  def DELETE = DeleteNode()
+  def SET = SetNode()
+  def REMOVE = RemoveNode()
+  def RETURN = ReturnNode()
+
+  override val asCypher: String = _
 }
 
 case class ReturnNode() extends CypherQuery {
@@ -37,7 +43,16 @@ case class InQueryCallNode() extends ReadingClause{
 }
 
 
-trait UpdatingClause extends CypherQuery
+trait UpdatingClause extends CypherQuery{
+
+  def CREATE = CreateNode()
+  def MERGE = MergeNode()
+  def DELETE = DeleteNode()
+  def SET = SetNode()
+  def REMOVE = RemoveNode()
+  def RETURN = ReturnNode()
+
+}
 
 case class CreateNode() extends UpdatingClause{
   override val asCypher: String = _
@@ -75,9 +90,7 @@ trait MultiPartQuery extends CypherQuery with SingleQuery
 
 object yeet{
   println(
-
-    QueryRoot()
-      UNWIND
+    QueryRoot().MATCH.CREATE.CREATE.RETURN
 
 
 
