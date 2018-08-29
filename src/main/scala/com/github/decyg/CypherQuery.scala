@@ -7,6 +7,7 @@ trait CypherQuery {
 // this is the root class?
 case class QueryRoot(){
 
+  def OPTIONAL = OptionalNode()
   def MATCH = MatchNode()
   def UNWIND = UnwindNode()
 
@@ -34,6 +35,11 @@ case class MatchNode() extends ReadingClause{
   override val asCypher: String = _
 }
 
+case class OptionalNode() extends ReadingClause{
+  def MATCH = MatchNode()
+
+}
+
 case class UnwindNode() extends ReadingClause{
   override val asCypher: String = _
 }
@@ -53,6 +59,8 @@ trait UpdatingClause extends CypherQuery{
   def RETURN = ReturnNode()
 
 }
+
+
 
 case class CreateNode() extends UpdatingClause{
   override val asCypher: String = _
