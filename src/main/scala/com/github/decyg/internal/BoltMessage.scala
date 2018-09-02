@@ -5,60 +5,20 @@ import scodec.bits._
 import codecs._
 
 
-sealed trait BoltMessage {
-}
+sealed trait BoltMessage
 
-case class InitCodec() extends Codec[InitCodec] with BoltMessage {
-  override def encode(value: InitCodec): Attempt[BitVector] = ???
+case class BoltInit(clientName: BoltString, authToken: BoltMap[BoltString, BoltType]) extends BoltMessage
+case class BoltRun(statement: BoltString, parameters: BoltMap[BoltString, BoltType]) extends BoltMessage
+case class BoltDiscardAll() extends BoltMessage
+case class BoltPullAll() extends BoltMessage
+case class BoltAckFailure() extends BoltMessage
+case class BoltReset() extends BoltMessage
+case class BoltRecord(fields: BoltList[BoltType]) extends BoltMessage
+case class BoltSuccess(metadata: BoltMap[BoltString, BoltType]) extends BoltMessage
+case class BoltFailure(metadata: BoltMap[BoltString, BoltType]) extends BoltMessage
+case class BoltIgnored() extends BoltMessage
 
-  override def sizeBound: SizeBound = ???
 
-  override def decode(bits: BitVector): Attempt[DecodeResult[InitCodec]] = ???
-}
-
-/*
-case class RunCodec() extends Codec[InitCodec] with BoltMessage{
-  override val signature: Byte = 0x10
-
-}
-
-case class DiscardAllCodec() extends Codec[DiscardAllCodec] with BoltMessage{
-  override val signature: Byte = 0x2F
+object BoltMessage {
 
 }
-
-case class PullAllCodec() extends Codec[PullAllCodec] with BoltMessage{
-  override val signature: Byte = 0x3F
-
-}
-
-case class AckFailureCodec() extends Codec[AckFailureCodec] with BoltMessage{
-  override val signature: Byte = 0x0E
-
-}
-
-case class ResetCodec() extends Codec[ResetCodec] with BoltMessage{
-  override val signature: Byte = 0x0F
-
-}
-
-case class RecordCodec() extends Codec[RecordCodec] with BoltMessage{
-  override val signature: Byte = 0x71
-
-}
-
-case class SuccessCodec() extends Codec[SuccessCodec] with BoltMessage{
-  override val signature: Byte = 0x70
-
-}
-
-case class FailureCodec() extends Codec[FailureCodec] with BoltMessage{
-  override val signature: Byte = 0x7F
-
-}
-
-case class IgnoredCodec() extends Codec[IgnoredCodec] with BoltMessage{
-  override val signature: Byte = 0x7E
-
-}
-*/
