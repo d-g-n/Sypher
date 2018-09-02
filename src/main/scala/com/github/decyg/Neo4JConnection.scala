@@ -20,6 +20,10 @@ import scala.collection.immutable
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Await, Future}
 import scala.io.StdIn
+import scodec._
+import scodec.bits._
+import codecs._
+import com.github.decyg.internal.{BoltInteger, BoltNull, BoltType}
 
 class Neo4JConnection(
            hostname: String = "localhost",
@@ -28,6 +32,7 @@ class Neo4JConnection(
 
   private implicit def int2Byte(i: Int): Byte = i.toByte
   private implicit def int2ByteSeq(i: Seq[Int]): Seq[Byte] = i.map(_.toByte)
+  private implicit def bv2Array(i: ByteVector): Array[Byte] = i.toArray
 
 
   private def sendRaw(args: Byte*) = {
@@ -84,20 +89,24 @@ class Neo4JConnection(
   println(testData2.map("%02X" format _).mkString(" "))
   println(dataAsChunked(testData2).map("%02X" format _).mkString(" "))
 
+  val test = 10+10
+  println(BoltType.integer.encode(BoltInteger(BigInt("2147483648"))).map(_.toHex))
+  //Successful(DecodeResult(BoltInteger(9223372036854775807),BitVector(empty)))
 
   override def onOpen(handshakedata: ServerHandshake): Unit = {
     logger.info("Connecting with the magic handshake")
-    sendRaw(0x60, 0x60, 0xB0, 0x17)
+    send(hex"60 60 B0 17")
 
     logger.info("Sending requested version (v1) as a list")
-    sendRaw(0x00, 0x00, 0x00, 0x01)
-    sendRaw(0x00, 0x00, 0x00, 0x00)
-    sendRaw(0x00, 0x00, 0x00, 0x00)
-    sendRaw(0x00, 0x00, 0x00, 0x00)
+    send(hex"00 00 00 01")
+    send(hex"00 00 00 00")
+    send(hex"00 00 00 00")
+    send(hex"00 00 00 00")
 
   }
 
   override def onMessage(message: ByteBuffer): Unit = {
+    val bv = ByteVector(message)
     val a = message.array()
 
     logger.info("Message received: " + a.mkString(", "))
