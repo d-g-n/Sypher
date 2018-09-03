@@ -23,7 +23,7 @@ case class BoltMap(m: Map[BoltType, BoltType]) extends BoltType
 sealed trait BoltStructure extends BoltType
 
 case class BoltStructureContainer(l: List[BoltType] = List()) extends BoltStructure
-case class BoltNode(nodeIdentity: Integer, labels: List[String], properties: Map[String, BoltType]) extends BoltStructure
+case class BoltNode(nodeIdentity: BigInt, labels: List[String], properties: Map[String, BoltType]) extends BoltStructure
 case class BoltRelationship(relIdentity: BigInt, startNodeIdentity: BigInt, endNodeIdentity: BigInt, `type`: String, properties: Map[String, BoltType]) extends BoltStructure
 case class BoltUnboundRelationship(relIdentity: BigInt, `type`: String, properties: Map[String, BoltType]) extends BoltStructure
 case class BoltPath(nodes: List[BoltNode], relationships: List[BoltUnboundRelationship], sequence: List[BigInt]) extends BoltStructure
@@ -38,8 +38,9 @@ object BoltType {
     //val hothertest = bvToBTGeneric(BitVector(hex"93C0C0C0"))
     //val hothertesttest = Codec[BoltType].decode(BitVector(hex"C0"))
 
-    val maptest = (integer ~ list ~ map).decode(BitVector(hex"""01 91 01 A1 01 C0"""))
-
+    //val maptest = (integer ~ list ~ map).decode(BitVector(hex"""01 91 01 A1 01 C0"""))
+    val nodetest = Codec[BoltType].decode(hex"B3 4E 01 91 81 61 A1 81 61 01".bits)
+    val nodetestfail = Codec[BoltType].decode(hex"B3 4E 01 91 01 A1 81 61 01".bits)
 
     val n = 10+10
   }

@@ -1,6 +1,6 @@
 package com.github.decyg.internal.codecs
 
-import com.github.decyg.internal.BoltStructure
+import com.github.decyg.internal._
 import scodec.{Attempt, Codec, DecodeResult, Err, SizeBound}
 import scodec.bits.BitVector
 import scodec.codecs.{uint16, uint4, uint8}
@@ -73,15 +73,40 @@ object BoltStructureCodec extends Codec[BoltStructure] {
       // the first 8 bits of the rest of it are still
       val (signatureBV, body) = lstDecode.splitAt(8)
 
-      /*signatureBV match {
+      // yes, i am aware runtime validation is B A D, but i couldn't figure out how to do it with parameterised types so
+      signatureBV match {
         case NODE => // must be len 3, int, list<string>, map<string, value>
-          (Codec[BoltInteger] ~ Codec[BoltList[BoltString]] ~ Codec[BoltMap[BoltString, BoltType]]).as[BoltNode].decode(body)
+          (Codec[BoltInteger] ~ Codec[BoltList] ~ Codec[BoltMap]).decode(body).flatMap{
+            res =>
+              val ((a, b), c) = res.value
+              val lstStrBool = b.l.forall(_.isInstanceOf[BoltString])
+              val mapStrBool = c.m.forall(_._1.isInstanceOf[BoltString])
+
+              if(lstStrBool && mapStrBool){
+                Attempt.successful(
+                  DecodeResult(
+                    BoltNode(
+                      a.i,
+                      b.l.map(_.asInstanceOf[BoltString].s),
+                      c.m.map(a => (a._1.asInstanceOf[BoltString].s, a._2))
+                    ),
+                    res.remainder
+                  )
+                )
+              } else {
+                Attempt.failure(Err("Could not parse a valid BoltNode type from input"))
+              }
+          }
+
         case RELATIONSHIP =>
-          (Codec[BoltInteger] ~ Codec[BoltInteger] ~ Codec[BoltInteger] ~ Codec[BoltString] ~ Codec[BoltMap[BoltString, BoltType]]).as[BoltRelationship].decode(body)
+          (Codec[BoltInteger] ~ Codec[BoltInteger] ~ Codec[BoltInteger] ~ Codec[BoltString] ~ Codec[BoltMap]).decode(body)
+          Attempt.failure(Err("")) //TODO
         case PATH =>
-          (Codec[BoltList[BoltNode]] ~ Codec[BoltList[BoltUnboundRelationship]] ~ Codec[BoltList[BoltInteger]]).as[BoltPath].decode(body)
+          (Codec[BoltList] ~ Codec[BoltList] ~ Codec[BoltList]).decode(body)
+          Attempt.failure(Err(""))//TODO
         case UNBOUNDRELATIONSHIP =>
-          (Codec[BoltInteger] ~ Codec[BoltString] ~ Codec[BoltMap[BoltString, BoltType]]).as[BoltUnboundRelationship].decode(body)
+          (Codec[BoltInteger] ~ Codec[BoltString] ~ Codec[BoltMap]).decode(body)
+          Attempt.failure(Err(""))//TODO
         case _ =>
           (0 until lstLen.toInt).foldLeft(Attempt.successful((List.empty[BoltType], lstDecode))){
             (lstAtt, i) =>
@@ -94,9 +119,9 @@ object BoltStructureCodec extends Codec[BoltStructure] {
               }
           }.map(a => DecodeResult(BoltStructureContainer(a._1), a._2))
 
-      }*/
+      }
 
-      Attempt.failure(Err(""))
+
     }
 
     if(markerHigh == S){ // using just the high part as the low is variable, the low determines the datasize
