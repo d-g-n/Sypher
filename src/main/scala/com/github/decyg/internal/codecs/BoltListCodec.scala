@@ -1,13 +1,13 @@
 package com.github.decyg.internal.codecs
 
-import com.github.decyg.internal.{BoltList, BoltType}
+import com.github.decyg.internal._
 import scodec.bits.BitVector
 import scodec.{Attempt, Codec, DecodeResult, Err, SizeBound}
 import scodec.codecs.{uint16, uint32, uint4, uint8}
 import scodec.bits._
-import shapeless.{Generic, Lazy}
+import shapeless.{Generic, Lazy, TypeCase, Typeable}
 
-class BoltListCodec[T <: BoltType] extends Codec[BoltList[T]] {
+object BoltListCodec extends Codec[BoltList] {
   // datatype markers
   val L = hex"9".bits.takeRight(4)
   val L8 = hex"D4".bits
@@ -16,7 +16,7 @@ class BoltListCodec[T <: BoltType] extends Codec[BoltList[T]] {
 
   override def sizeBound: SizeBound = SizeBound.atLeast(8 * 2) // unbound but has to at least be two bytes
 
-  override def encode(value: BoltList[T]): Attempt[BitVector] = {
+  override def encode(value: BoltList): Attempt[BitVector] = {
 
     val listLen = value.l.size
 
@@ -65,20 +65,18 @@ class BoltListCodec[T <: BoltType] extends Codec[BoltList[T]] {
 
   }
 
-  override def decode(bits: BitVector): Attempt[DecodeResult[BoltList[T]]] = {
+  override def decode(bits: BitVector): Attempt[DecodeResult[BoltList]] = {
     val (marker, body) = bits.splitAt(8)
     val (markerHigh, markerLow) = marker.splitAt(4)
 
     import BoltType._
     val resDecode = (lstDecode: BitVector, lstLen: Long) => {
       // arbritrary length bitvector and the number of "elements", just need to iteratively consume until its found all elems
-      (0 until lstLen.toInt).foldLeft(Attempt.successful((List.empty[T], lstDecode))){
+      (0 until lstLen.toInt).foldLeft(Attempt.successful((List.empty[BoltType], lstDecode))){
         (lstAtt, i) =>
           lstAtt.flatMap{
             lst =>
-
-
-              Codec[T].decode(lst._2).map{
+              Codec[BoltType].decode(lst._2).map{
                 resLst =>
                   (List(resLst.value) ++ lst._1, resLst.remainder)
               }

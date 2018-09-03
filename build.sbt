@@ -24,5 +24,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
   "org.java-websocket" % "Java-WebSocket" % "1.3.9",
   "org.scodec" %% "scodec-bits" % "1.1.5",
-  "org.scodec" %% "scodec-core" % "1.10.3"
+  "org.scodec" %% "scodec-core" % "1.10.3",
+  "com.lihaoyi" %% "fastparse" % "1.0.0",
+  "com.lihaoyi" %% "fastparse-byte" % "1.0.0"
 )

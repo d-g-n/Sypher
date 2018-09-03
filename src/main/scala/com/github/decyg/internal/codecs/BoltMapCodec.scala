@@ -6,7 +6,7 @@ import scodec.{Attempt, Codec, DecodeResult, Err, SizeBound}
 import scodec.codecs.{uint16, uint32, uint4, uint8}
 import scodec.bits._
 
-object BoltMapCodec extends Codec[BoltMap[BoltType, BoltType]] {
+object BoltMapCodec extends Codec[BoltMap] {
   // datatype markers
   val M = hex"A".bits.takeRight(4)
   val M8 = hex"D8".bits
@@ -15,7 +15,7 @@ object BoltMapCodec extends Codec[BoltMap[BoltType, BoltType]] {
 
   override def sizeBound: SizeBound = SizeBound.atLeast(8 * 2) // unbound but has to at least be two bytes
 
-  override def encode(value: BoltMap[BoltType, BoltType]): Attempt[BitVector] = {
+  override def encode(value: BoltMap): Attempt[BitVector] = {
 
     val listLen = value.m.size
 
@@ -67,7 +67,7 @@ object BoltMapCodec extends Codec[BoltMap[BoltType, BoltType]] {
 
   }
 
-  override def decode(bits: BitVector): Attempt[DecodeResult[BoltMap[BoltType, BoltType]]] = {
+  override def decode(bits: BitVector): Attempt[DecodeResult[BoltMap]] = {
     val (marker, body) = bits.splitAt(8)
     val (markerHigh, markerLow) = marker.splitAt(4)
 
