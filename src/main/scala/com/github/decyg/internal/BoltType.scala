@@ -2,53 +2,25 @@ package com.github.decyg.internal
 import scodec._
 import scodec.bits._
 import codecs._
+import com.github.decyg.internal
+import com.github.decyg.internal.BoltType.BoltTypeMarker.{BoltTypeMarker, WithRange}
 import scodec.codecs.implicits._
 
 sealed trait BoltType
-
 case class BoltNull() extends BoltType
-object BoltNull{ implicit val discriminator: Discriminator[BoltType, BoltNull, Int] = Discriminator(1) }
-
 case class BoltBoolean(b: Boolean) extends BoltType
-object BoltBoolean{ implicit val discriminator: Discriminator[BoltType, BoltBoolean, Int] = Discriminator(2) }
-
 case class BoltInteger(i: BigInt) extends BoltType
-object BoltInteger{ implicit val discriminator: Discriminator[BoltType, BoltInteger, Int] = Discriminator(3) }
-
 case class BoltFloat(d: Double) extends BoltType
-object BoltFloat{ implicit val discriminator: Discriminator[BoltType, BoltFloat, Int] = Discriminator(4) }
-
 case class BoltString(s: String) extends BoltType
-object BoltString{ implicit val discriminator: Discriminator[BoltType, BoltString, Int] = Discriminator(5) }
-
 case class BoltList[T <: BoltType](l: List[T]) extends BoltType
-object BoltList{ implicit val discriminator: Discriminator[BoltType, BoltList[BoltType], Int] = Discriminator(6) }
-
 case class BoltMap[L <: BoltType, R <: BoltType](m: Map[L, R]) extends BoltType
-object BoltMap{ implicit val discriminator: Discriminator[BoltType, BoltMap[BoltType, BoltType], Int] = Discriminator(7) }
-
-case class BoltStructure(s: List[BoltType]) extends BoltType
-object BoltStructure{ implicit val discriminator: Discriminator[BoltType, BoltStructure, Int] = Discriminator(8) }
-
-case class BoltNode(nodeIdentity: BoltInteger, labels: BoltList[BoltString], properties: BoltMap[BoltString, BoltType]) extends BoltType
-object BoltNode{ implicit val discriminator: Discriminator[BoltType, BoltNode, Int] = Discriminator(9) }
-
+sealed trait BoltStructure extends BoltType
+case class BoltNode(nodeIdentity: BoltInteger, labels: BoltList[BoltString], properties: BoltMap[BoltString, BoltType]) extends BoltType with BoltStructure
 case class BoltRelationship(relIdentity: BoltInteger, startNodeIdentity: BoltInteger, endNodeIdentity: BoltInteger, `type`: BoltString, properties: BoltMap[BoltString, BoltType]) extends BoltType
-object BoltRelationship{ implicit val discriminator: Discriminator[BoltType, BoltRelationship, Int] = Discriminator(10) }
-
 case class BoltUnboundRelationship(relIdentity: BoltInteger, `type`: BoltString, properties: BoltMap[BoltString, BoltType]) extends BoltType
-object BoltUnboundRelationship{ implicit val discriminator: Discriminator[BoltType, BoltUnboundRelationship, Int] = Discriminator(11) }
-
-case class BoltPath(nodes: BoltList[BoltNode], relationships: BoltList[BoltUnboundRelationship], sequence: BoltList[BoltInteger])extends BoltType
-object BoltPath{ implicit val discriminator: Discriminator[BoltType, BoltPath, Int] = Discriminator(12) }
+case class BoltPath(nodes: BoltList[BoltNode], relationships: BoltList[BoltUnboundRelationship], sequence: BoltList[BoltInteger]) extends BoltType
 
 object BoltType {
-
-  implicit val discriminated: Discriminated[BoltType, Int] = Discriminated(uint8)
-
-  implicit lazy val test: shapeless.Lazy[Codec[BoltType]] = {
-    shapeless.Lazy[Codec[BoltType]].apply(Codec[BoltType])
-  }
 
 /**
   def btAsEncodedAttempt(boltType: BoltType): Attempt[BitVector] = {
@@ -62,6 +34,74 @@ object BoltType {
 **/
   def decodedToBT(bv: BitVector): BoltType = ???
 
+  val marker: Codec[BoltTypeMarker.WithRange] = new Codec[BoltTypeMarker.WithRange] {
+
+    override def sizeBound: SizeBound = SizeBound.exact(8)
+
+    override def encode(value: BoltTypeMarker.WithRange): Attempt[BitVector] = { Attempt.successful(BitVector(hex"")) }
+
+    override def decode(bits: BitVector): Attempt[DecodeResult[BoltTypeMarker.WithRange]] = {
+      val lv = bits.take(8).toLong()
+
+      BoltTypeMarker.values.find {
+        v =>
+          v.asInstanceOf[WithRange].bvRanges.exists {
+            a =>
+              lv >= a._1.toLong() && lv <= a._2.toLong()
+          }
+      } match {
+        case Some(btmv) =>
+          Attempt.successful(DecodeResult(btmv.asInstanceOf[WithRange], bits)) // don't consume any bits
+        case None =>
+          Attempt.failure(Err("Couldn't find a corresponding mapping "))
+
+      }
+    }
+  }
+
+  object BoltTypeMarker extends Enumeration {
+    type BoltTypeMarker = WithRange
+
+    implicit def singleAsTup(bv: BitVector): (BitVector, BitVector) = (bv, bv)
+    case class WithRange(bvRanges: (BitVector, BitVector)*) extends Val
+    //val NULL, BOOLEAN, INTEGER, FLOAT, STRING, LIST, MAP, NODE, RELATIONSHIP, PATH = Value
+    val NULL = WithRange(BitVector(hex"C0"))
+    val BOOLEAN = WithRange(BitVector(hex"C2") -> BitVector(hex"C3"))
+    val INTEGER = WithRange(BitVector(hex"00") -> BitVector(hex"7F"), BitVector(hex"C8") -> BitVector(hex"CB"))
+    val FLOAT = WithRange(BitVector(hex"C1"))
+    val STRING = WithRange(BitVector(hex"80") -> BitVector(hex"8F"), BitVector(hex"D0") -> BitVector(hex"D2"))
+    val LIST = WithRange(BitVector(hex"90") -> BitVector(hex"9F"), BitVector(hex"D4") -> BitVector(hex"D6"))
+    val MAP = WithRange(BitVector(hex"A0") -> BitVector(hex"AF"), BitVector(hex"D8") -> BitVector(hex"DA"))
+    val STRUCTURE = WithRange(BitVector(hex"B0") -> BitVector(hex"BF"), BitVector(hex"DC") -> BitVector(hex"DD"))
+
+  }
+
+  implicit lazy val codec: Codec[BoltType] = shapeless.lazily {
+    discriminated[BoltType].by(marker)
+      .typecase(BoltTypeMarker.NULL, `null`)
+      .typecase(BoltTypeMarker.BOOLEAN, boolean)
+      .typecase(BoltTypeMarker.INTEGER, integer)
+      .typecase(BoltTypeMarker.FLOAT, float)
+      .typecase(BoltTypeMarker.STRING, string)
+      .typecase(BoltTypeMarker.LIST, list)
+
+    //typecase(1, list(codec).as[Batch])
+  }
+
+
+  def testa = {
+    val test = Codec[BoltList[BoltType]].encode(BoltList(l = List(BoltList(List(BoltNull())), BoltNull())))
+    val othertest = Codec[BoltList[BoltType]].encode(BoltList(List(BoltNull(), BoltNull())))
+
+    val htest = Codec[BoltList[BoltType]].decode(BitVector(hex"9291C0C0"))
+    val hothertest = Codec[BoltList[BoltType]].decode(BitVector(hex"92C0C0"))
+    val hothertesttest = Codec[BoltType].decode(BitVector(hex"C0"))
+
+
+    val n = 10+10
+  }
+
+
   implicit val `null`: Codec[BoltNull] = new Codec[BoltNull] {
 
     override def sizeBound: SizeBound = SizeBound.exact(8)
@@ -71,9 +111,11 @@ object BoltType {
     }
 
     override def decode(b: BitVector): Attempt[DecodeResult[BoltNull]] = {
-      if (b == hex"C0".bits)
-        Attempt.successful(DecodeResult(BoltNull(), BitVector.empty))
-      else Attempt.failure(Err("Was not null terminated!"))
+      val (marker, body) = b.splitAt(8)
+      if (marker == hex"C0".bits)
+        Attempt.successful(DecodeResult(BoltNull(), body))
+      else
+        Attempt.failure(Err("Was not null terminated!"))
     }
   }
 
@@ -151,8 +193,11 @@ object BoltType {
           int32.decode(body).map(_.map(i => BoltInteger(i)))
         case I64 =>
           int64.decode(body).map(_.map(i => BoltInteger(i)))
-        case ti if ti.size == 8 && body.size == 0 => // overflow case, match only if body is blank and ti is 8 long
-          int8.decode(marker).map(_.map(i => BoltInteger(i)))
+        case ti => // overflow case, match only if body is blank and ti is 8 long
+          int8.decode(marker).map {
+            a =>
+              DecodeResult(BoltInteger(a.value), body)
+          }
         case _ =>
           Attempt.failure(Err("Bit Vector is not a recognised numeric sequence"))
       }
@@ -263,32 +308,48 @@ object BoltType {
 
       val listLen = value.l.size
 
+      val asValueList = value.l.foldLeft(Attempt.successful(BitVector(hex""))){
+        (cur, bt) =>
+          cur.flatMap{
+            bvL =>
+              Codec[BoltType].encode(bt).map(bv => bvL ++ bv)
+          }
+      }
+
       if(listLen <= 15L){
-        uint8.encode(listLen).map{
+        uint4.encode(listLen).flatMap{
           listLenBV =>
-             value.l.foldLeft(Attempt.successful(BitVector(hex""))){
-              (cur, bt) =>
-                cur.flatMap{
-                  bvL =>
-                    Codec[BoltType].encode(bt).map(bv => bvL ++ bv)
-                    Attempt.successful(BitVector(hex""))
-                }
-            }.map{
-              bv =>
-                hex"9".bits ++ listLenBV ++ bv
+             asValueList.map{
+               bv =>
+                 val test = hex"90".bits.padTo(8)
+                 val test2 = listLenBV.padLeft(8)
+                 (hex"90".bits.padTo(8) | listLenBV.padLeft(8)) ++ bv
             }
         }
       } else if(listLen <= 255L){
-
+        uint8.encode(listLen).flatMap{
+          listLenBV =>
+            asValueList.map{
+              bv => L8 ++ listLenBV.padLeft(8) ++ bv
+            }
+        }
       } else if(listLen <= 65535L){
-
+        uint16.encode(listLen).flatMap{
+          listLenBV =>
+            asValueList.map{
+              bv => L16 ++ listLenBV.padLeft(16) ++ bv
+            }
+        }
       } else if(listLen <= 4294967295L){
-
+        uint32.encode(listLen).flatMap{
+          listLenBV =>
+            asValueList.map{
+              bv => L32 ++ listLenBV.padLeft(32) ++ bv
+            }
+        }
       } else {
         Attempt.failure(Err("Can't encode a list longer than 4294967295 individual items"))
       }
-
-      Attempt.failure(Err(""))
 
     }
 
@@ -296,7 +357,34 @@ object BoltType {
       val (marker, body) = bits.splitAt(8)
       val (markerHigh, markerLow) = bits.splitAt(4)
 
-      Attempt.failure(Err(""))
+      val resDecode = (lstDecode: BitVector, lstLen: Long) => {
+        // arbritrary length bitvector and the number of "elements", just need to iteratively consume until its found all elems
+        (0 until lstLen.toInt).foldLeft(Attempt.successful((List.empty[BoltType], lstDecode))){
+          (lstAtt, i) =>
+            lstAtt.flatMap{
+              lst =>
+                Codec[BoltType].decode(lst._2).map{
+                  resLst =>
+                    (resLst.value :: lst._1, resLst.remainder)
+                }
+            }
+        }.map(a => DecodeResult(BoltList(a._1), a._2))
+      }
+
+      if(markerHigh == L){ // using just the high part as the low is variable, the low determines the datasize
+        uint4.decode(markerLow).flatMap{ n => resDecode(body, n.value) }
+      } else if(marker == L8){
+        val (len, listBody) = body.splitAt(8)
+        uint8.decode(len).flatMap{ n => resDecode(listBody, n.value) }
+      } else if(marker == L16){
+        val (len, listBody) = body.splitAt(16)
+        uint16.decode(len).flatMap{ n => resDecode(listBody, n.value) }
+      } else if(marker == L32){
+        val (len, listBody) = body.splitAt(32)
+        uint32.decode(len).flatMap{ n => resDecode(listBody, n.value) }
+      } else {
+        Attempt.failure(Err("Not a valid string representation"))
+      }
     }
   }
 }

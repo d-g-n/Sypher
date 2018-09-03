@@ -3,6 +3,7 @@ package com.github.decyg
 import java.net.URI
 import java.nio.ByteBuffer
 
+import com.github.decyg.internal.BoltType
 import com.typesafe.scalalogging.LazyLogging
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
@@ -14,6 +15,8 @@ class Neo4JConnection(
            ) extends WebSocketClient(new URI(s"ws://$hostname:$port/")) with LazyLogging {
 
   private implicit def bv2Array(i: ByteVector): Array[Byte] = i.toArray
+
+  BoltType.testa
 
 
   override def onOpen(handshakedata: ServerHandshake): Unit = {
