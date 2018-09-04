@@ -8,7 +8,6 @@ import scodec.bits._
 
 object BoltIntegerCodec extends Codec[BoltInteger] {
 
-
   // datatype markers
   val I8 = hex"C8".bits
   val I16 = hex"C9".bits
@@ -40,7 +39,7 @@ object BoltIntegerCodec extends Codec[BoltInteger] {
     } else if(bi >= I64R._1 && bi <= I64R._2){
       Attempt.successful(I64 ++ bv.padLeft(8 * 8))
     } else {
-      Attempt.failure(Err("The stored BigInt is larger than the internal INT_64 representation (-9 223 372 036 854 775 808 -> +9 223 372 036 854 775 807)"))
+      Attempt.failure(Err("The stored BigInt is out of bounds for the internal INT_64 representation (-9 223 372 036 854 775 808 -> +9 223 372 036 854 775 807)"))
     }
 
   }
@@ -58,13 +57,11 @@ object BoltIntegerCodec extends Codec[BoltInteger] {
         int32.decode(body).map(_.map(i => BoltInteger(i)))
       case I64 =>
         int64.decode(body).map(_.map(i => BoltInteger(i)))
-      case ti => // overflow case, match only if body is blank and ti is 8 long
+      case _ => // overflow case, match only if body is blank and ti is 8 long
         int8.decode(marker).map {
           a =>
             DecodeResult(BoltInteger(a.value), body)
         }
-      case _ =>
-        Attempt.failure(Err("Not a valid string representation of a BoltInteger"))
     }
   }
 

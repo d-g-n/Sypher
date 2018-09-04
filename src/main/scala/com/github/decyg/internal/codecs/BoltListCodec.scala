@@ -20,8 +20,6 @@ object BoltListCodec extends Codec[BoltList] {
 
     val listLen = value.l.size
 
-    implicit lazy val test: Codec[BoltType] = BoltType.codec
-
     val asValueList = value.l.foldLeft(Attempt.successful(BitVector(hex""))){
       (cur, bt) =>
         cur.flatMap{
@@ -72,13 +70,13 @@ object BoltListCodec extends Codec[BoltList] {
     import BoltType._
     val resDecode = (lstDecode: BitVector, lstLen: Long) => {
       // arbritrary length bitvector and the number of "elements", just need to iteratively consume until its found all elems
-      (0 until lstLen.toInt).foldLeft(Attempt.successful((List.empty[BoltType], lstDecode))){
+      (0 until lstLen.toInt).foldLeft(Attempt.successful((Seq.empty[BoltType], lstDecode))){
         (lstAtt, i) =>
           lstAtt.flatMap{
             lst =>
               Codec[BoltType].decode(lst._2).map{
                 resLst =>
-                  (List(resLst.value) ++ lst._1, resLst.remainder)
+                  (lst._1 ++ Seq(resLst.value), resLst.remainder)
               }
           }
       }.map(a => DecodeResult(BoltList(a._1), a._2))

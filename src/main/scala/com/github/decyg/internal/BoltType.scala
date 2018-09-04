@@ -14,7 +14,7 @@ case class BoltBoolean(b: Boolean) extends BoltType
 case class BoltInteger(i: BigInt) extends BoltType
 case class BoltFloat(d: Double) extends BoltType
 case class BoltString(s: String) extends BoltType
-case class BoltList(l: List[BoltType]) extends BoltType
+case class BoltList(l: Seq[BoltType]) extends BoltType
 case class BoltMap(m: Map[BoltType, BoltType]) extends BoltType
 
 // Bolt nodes etc are actually just structure types, just defined by a different signature from normal
@@ -22,28 +22,13 @@ case class BoltMap(m: Map[BoltType, BoltType]) extends BoltType
 // note this is suboptimal and i'm aware, i just couldn't figure out how to get scodec to respect nested ADTs with parameterised types
 sealed trait BoltStructure extends BoltType
 
-case class BoltStructureContainer(l: List[BoltType] = List()) extends BoltStructure
-case class BoltNode(nodeIdentity: BigInt, labels: List[String], properties: Map[String, BoltType]) extends BoltStructure
+case class BoltStructureContainer(l: Seq[BoltType] = Seq()) extends BoltStructure
+case class BoltNode(nodeIdentity: BigInt, labels: Seq[String], properties: Map[String, BoltType]) extends BoltStructure
 case class BoltRelationship(relIdentity: BigInt, startNodeIdentity: BigInt, endNodeIdentity: BigInt, `type`: String, properties: Map[String, BoltType]) extends BoltStructure
 case class BoltUnboundRelationship(relIdentity: BigInt, `type`: String, properties: Map[String, BoltType]) extends BoltStructure
-case class BoltPath(nodes: List[BoltNode], relationships: List[BoltUnboundRelationship], sequence: List[BigInt]) extends BoltStructure
+case class BoltPath(nodes: Seq[BoltNode], relationships: Seq[BoltUnboundRelationship], sequence: Seq[BigInt]) extends BoltStructure
 
 object BoltType {
-
-  def testa = {
-    //val test = Codec[BoltList[BoltType]].encode(BoltList(l = List(BoltList(List(BoltNull())), BoltNull())))
-    //val othertest = Codec[BoltList[BoltType]].encode(BoltList(List(BoltNull(), BoltNull())))
-
-    //val htest = Codec[BoltList[BoltType]].decode(BitVector(hex"9291C0C0"))
-    //val hothertest = bvToBTGeneric(BitVector(hex"93C0C0C0"))
-    //val hothertesttest = Codec[BoltType].decode(BitVector(hex"C0"))
-
-    //val maptest = (integer ~ list ~ map).decode(BitVector(hex"""01 91 01 A1 01 C0"""))
-    val nodetest = Codec[BoltType].decode(hex"B3 4E 01 91 81 61 A1 81 61 01".bits)
-    val nodetestfail = Codec[BoltType].decode(hex"B3 4E 01 91 01 A1 81 61 01".bits)
-
-    val n = 10+10
-  }
 
   implicit lazy val codec: Codec[BoltType] = shapeless.lazily {
     discriminated[BoltType].by(marker)

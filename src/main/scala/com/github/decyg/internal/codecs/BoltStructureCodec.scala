@@ -108,13 +108,13 @@ object BoltStructureCodec extends Codec[BoltStructure] {
           (Codec[BoltInteger] ~ Codec[BoltString] ~ Codec[BoltMap]).decode(body)
           Attempt.failure(Err(""))//TODO
         case _ =>
-          (0 until lstLen.toInt).foldLeft(Attempt.successful((List.empty[BoltType], lstDecode))){
+          (0 until lstLen.toInt).foldLeft(Attempt.successful((Seq.empty[BoltType], lstDecode))){
             (lstAtt, i) =>
               lstAtt.flatMap{
                 lst =>
                   Codec[BoltType].decode(lst._2).map{
                     resLst =>
-                      (resLst.value :: lst._1, resLst.remainder)
+                      (lst._1 ++ Seq(resLst.value), resLst.remainder)
                   }
               }
           }.map(a => DecodeResult(BoltStructureContainer(a._1), a._2))
