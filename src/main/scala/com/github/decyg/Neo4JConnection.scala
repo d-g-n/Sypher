@@ -16,9 +16,6 @@ class Neo4JConnection(
 
   private implicit def bv2Array(i: ByteVector): Array[Byte] = i.toArray
 
-  BoltType.testa
-
-
   override def onOpen(handshakedata: ServerHandshake): Unit = {
     logger.info("Connecting with the magic handshake")
     send(hex"60 60 B0 17")

@@ -50,7 +50,7 @@ object BoltStringCodec extends Codec[BoltString] {
     val (markerHigh, markerLow) = marker.splitAt(4)
 
     val resDecode = (strDecode: BitVector, lenBounds: Long) => {
-      val (parseableBody, res) = body.splitAt(lenBounds * 8)
+      val (parseableBody, res) = strDecode.splitAt(lenBounds * 8)
       utf8.decode(parseableBody).flatMap(a => Attempt.successful(DecodeResult(BoltString(a.value), res)))
     }
 
