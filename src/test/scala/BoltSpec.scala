@@ -1,4 +1,4 @@
-import com.github.decyg.Neo4JConnection
+import com.github.decyg.{Neo4JConnection, internal}
 import com.github.decyg.internal._
 import org.scalatest.FlatSpec
 import scodec.Codec
@@ -7,6 +7,7 @@ import scala.io.StdIn
 import BoltType._
 import scodec.bits._
 import scodec.codecs._
+import shapeless.Typeable
 
 class BoltSpec extends FlatSpec{
 
@@ -96,6 +97,58 @@ class BoltSpec extends FlatSpec{
 
     assert(c.encode(BoltList(b)).require == hex"D4 11 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10".bits)
     assert(c.encode(BoltList(n)).require == hex"93 01 02 93 03 04 90".bits)
+
+    val typedListCodec = BoltType.typedListCodec(Typeable[BoltNull])
+
+    val validEncode = typedListCodec.encode(BoltList(List(BoltNull(), BoltNull())))
+    val invalidEncode = typedListCodec.encode(BoltList(List(BoltNull(), BoltNull(), BoltString("not null"))))
+
+    assert(validEncode.require == hex"92 C0 C0".bits)
+    assert(validEncode.isSuccessful)
+
+    assert(!invalidEncode.isSuccessful)
+
+    val validDecode = typedListCodec.decode(hex"92 C0 C0".bits)
+    val invalidDecode = typedListCodec.decode(hex"92 C0 90".bits)
+
+    assert(validDecode.require.value == BoltList(List(BoltNull(), BoltNull())))
+    assert(validDecode.isSuccessful)
+
+    assert(!invalidDecode.isSuccessful)
+  }
+
+  it should "be able to handle map values of mixed types, retaining order" in {
+    val n: Map[BoltType, BoltType] = Map(
+      BoltString("a") -> BoltInteger(1),
+      BoltString("b") -> BoltInteger(1),
+      BoltString("c") -> BoltInteger(3),
+      BoltString("d") -> BoltInteger(4),
+      BoltString("e") -> BoltInteger(5),
+      BoltString("f") -> BoltInteger(6),
+      BoltString("g") -> BoltInteger(7),
+      BoltString("h") -> BoltInteger(8),
+      BoltString("i") -> BoltInteger(9),
+      BoltString("j") -> BoltInteger(0),
+      BoltString("k") -> BoltInteger(1),
+      BoltString("l") -> BoltInteger(2),
+      BoltString("m") -> BoltInteger(3),
+      BoltString("n") -> BoltInteger(4),
+      BoltString("o") -> BoltInteger(5),
+      BoltString("p") -> BoltInteger(6),
+
+    )
+
+    assert(c.decode(hex"D8 10 81 61  01 81 62 01  81 63 03 81  64 04 81 65 05 81 66 06  81 67 07 81  68 08 81 69  09 81 6A 00 81 6B 01 81  6C 02 81 6D  03 81 6E 04  81 6F 05 81 70 06".bits).require.value == BoltMap(n))
+
+    val typedMapCodec = BoltType.typedMapCodec(Typeable[BoltString], Typeable[BoltInteger])
+
+    val validDecode = typedMapCodec.decode(hex"A1 81 61 01".bits)
+    val invalidDecode = typedMapCodec.decode(hex"A1 81 61 90".bits)
+
+    assert(validDecode.require.value == BoltMap(Map(BoltString("a") -> internal.BoltInteger(1))))
+    assert(validDecode.isSuccessful)
+
+    assert(!invalidDecode.isSuccessful)
 
   }
 }

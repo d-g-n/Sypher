@@ -5,7 +5,7 @@ import scodec.codecs.implicits._
 import scodec.bits._
 import scodec._
 import scodec.codecs._
-import shapeless.Typeable
+import shapeless.{HNil, Typeable}
 
 
 sealed trait BoltType
@@ -29,6 +29,24 @@ case class BoltUnboundRelationship(relIdentity: BigInt, `type`: String, properti
 case class BoltPath(nodes: Seq[BoltNode], relationships: Seq[BoltUnboundRelationship], sequence: Seq[BigInt]) extends BoltStructure
 
 object BoltType {
+
+  def typedListCodec[T <: BoltType](t: Typeable[T]): Codec[BoltList] = {
+
+    val f = (bl: BoltList) => {
+      if(bl.l.forall(a => t.cast(a).isDefined)) Attempt.successful(bl) else Attempt.failure(Err("Types in BoltList are not contiguous"))
+    }
+
+    Codec[BoltList].exmap[BoltList](f, f)
+  }
+
+  def typedMapCodec[L <: BoltType, R <: BoltType](l: Typeable[L], r: Typeable[R]): Codec[BoltMap] = {
+
+    val f = (bm: BoltMap) => {
+      if(bm.m.forall{ case (lV, rV) => l.cast(lV).isDefined && r.cast(rV).isDefined}) Attempt.successful(bm) else Attempt.failure(Err("Types in BoltMap are not contiguous"))
+    }
+
+    Codec[BoltMap].exmap[BoltMap](f, f)
+  }
 
   implicit lazy val codec: Codec[BoltType] = shapeless.lazily {
     discriminated[BoltType].by(marker)
