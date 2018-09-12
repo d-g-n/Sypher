@@ -5,6 +5,7 @@ import scodec.Codec
 
 import scala.io.StdIn
 import BoltType._
+import com.github.decyg.internal.codecs.BoltMessageCodec
 import scodec.bits._
 import scodec.codecs._
 import shapeless.Typeable

@@ -62,7 +62,7 @@ object BoltStructureCodec extends Codec[BoltStructure] {
         } yield {
           hex"B3".bits ++ UNBOUNDRELATIONSHIP ++ rel ++ tp ++ prop
         }
-      case BoltStructureContainer(l) =>
+      case BoltStructureContainer(marker, l) =>
         val listLen = l.size
 
         val asValueList = l.foldLeft(Attempt.successful(BitVector(hex""))){
@@ -78,21 +78,21 @@ object BoltStructureCodec extends Codec[BoltStructure] {
             listLenBV =>
               asValueList.map{
                 bv =>
-                  (hex"B0".bits | listLenBV.padLeft(8)) ++ STRUCTURE ++ bv
+                  (hex"B0".bits | listLenBV.padLeft(8)) ++ marker ++ bv
               }
           }
         } else if(listLen <= 255L){
           uint8.encode(listLen).flatMap{
             listLenBV =>
               asValueList.map{
-                bv => S8 ++ listLenBV.padLeft(8) ++ STRUCTURE ++ bv
+                bv => S8 ++ listLenBV.padLeft(8) ++ marker ++ bv
               }
           }
         } else if(listLen <= 65535L){
           uint16.encode(listLen).flatMap{
             listLenBV =>
               asValueList.map{
-                bv => S16 ++ listLenBV.padLeft(16) ++ STRUCTURE ++ bv
+                bv => S16 ++ listLenBV.padLeft(16) ++ marker ++ bv
               }
           }
         } else {
@@ -151,7 +151,7 @@ object BoltStructureCodec extends Codec[BoltStructure] {
             { bp => ((BoltInteger(bp.relIdentity), BoltString(bp.`type`)), BoltMap(bp.properties.map(e => BoltString(e._1) -> e._2))) }
           ).decode(body)
 
-        case _ =>
+        case otherMarker =>
 
           (0 until lstLen.toInt).foldLeft(Attempt.successful((Seq.empty[BoltType], body))){
             (lstAtt, i) =>
@@ -162,7 +162,7 @@ object BoltStructureCodec extends Codec[BoltStructure] {
                       (lst._1 ++ Seq(resLst.value), resLst.remainder)
                   }
               }
-          }.map(a => DecodeResult(BoltStructureContainer(a._1), a._2))
+          }.map(a => DecodeResult(BoltStructureContainer(otherMarker, a._1), a._2))
 
       }
     }

@@ -22,11 +22,25 @@ case class BoltMap(m: Map[BoltType, BoltType]) extends BoltType
 // note this is suboptimal and i'm aware, i just couldn't figure out how to get scodec to respect nested ADTs with parameterised types
 sealed trait BoltStructure extends BoltType
 
-case class BoltStructureContainer(l: Seq[BoltType] = Seq()) extends BoltStructure
+case class BoltStructureContainer(marker: BitVector, l: Seq[BoltType] = Seq()) extends BoltStructure with BoltMessage
 case class BoltNode(nodeIdentity: BigInt, labels: Seq[String], properties: Map[String, BoltType]) extends BoltStructure
 case class BoltRelationship(relIdentity: BigInt, startNodeIdentity: BigInt, endNodeIdentity: BigInt, `type`: String, properties: Map[String, BoltType]) extends BoltStructure
 case class BoltUnboundRelationship(relIdentity: BigInt, `type`: String, properties: Map[String, BoltType]) extends BoltStructure
 case class BoltPath(nodes: Seq[BoltNode], relationships: Seq[BoltUnboundRelationship], sequence: Seq[BigInt]) extends BoltStructure
+
+// a boltmessage is an even further specialisation of a generic
+sealed trait BoltMessage extends BoltStructure
+
+case class BoltInit(clientName: String, authToken: Map[String, BoltType]) extends BoltMessage
+case class BoltRun(statement: String, parameters: Map[String, BoltType]) extends BoltMessage
+case class BoltDiscardAll() extends BoltMessage
+case class BoltPullAll() extends BoltMessage
+case class BoltAckFailure() extends BoltMessage
+case class BoltReset() extends BoltMessage
+case class BoltRecord(fields: Seq[BoltType]) extends BoltMessage
+case class BoltSuccess(metadata: Map[String, BoltType]) extends BoltMessage
+case class BoltFailure(metadata: Map[String, BoltType]) extends BoltMessage
+case class BoltIgnored() extends BoltMessage
 
 object BoltType {
 
