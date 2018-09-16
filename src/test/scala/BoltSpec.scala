@@ -155,7 +155,10 @@ class BoltSpec extends FlatSpec{
 
   it should "be able to handle encoding and decoding of messages vice versa" in {
 
-    val bType1 = BoltMap(Map(BoltString("one two three") -> BoltMap(Map(BoltNull() -> BoltString("inner map"))), BoltList(List(BoltNull(), BoltInteger(100), BoltString("inner string"))) -> BoltBoolean(true)))
+    val bType1 = BoltInit("test string", Map(
+      "one two three" -> BoltMap(
+        Map(BoltNull() -> BoltString("inner map"))),
+      "four five six" -> BoltBoolean(true)))
 
     val bType1Encode = BoltTransferCodec.encode(BoltTransferEncoding(bType1))
 

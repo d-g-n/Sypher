@@ -43,7 +43,7 @@ object BoltTransferCodec extends Codec[BoltTransferEncoding] {
       }
     }
 
-    Codec[BoltType].encode(value.message).flatMap(recursiveProduce)
+    BoltMessageCodec.encode(value.message).flatMap(recursiveProduce)
   }
 
   override def decode(bits: BitVector): Attempt[DecodeResult[BoltTransferEncoding]] = {
@@ -83,7 +83,7 @@ object BoltTransferCodec extends Codec[BoltTransferEncoding] {
 
         assert(decodeRes.remainder.isEmpty)
 
-        Codec[BoltType].decode(boltVal).map(_.map(BoltTransferEncoding))
+        BoltMessageCodec.decode(boltVal).map(_.map(BoltTransferEncoding))
     }
   }
 }

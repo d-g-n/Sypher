@@ -27,7 +27,7 @@ object BoltMessageCodec extends Codec[BoltMessage] {
   override def encode(value: BoltMessage): Attempt[BitVector] = {
     val bsc = Codec[BoltStructure]
     value match {
-      case bi@BoltInit(clientName, authToken) =>
+      case BoltInit(clientName, authToken) =>
         bsc.encode(BoltStructureContainer(INIT, Seq(BoltString(clientName), BoltMap(authToken.map(e => BoltString(e._1) -> e._2)))))
       case BoltRun(statement, parameters) =>
         bsc.encode(BoltStructureContainer(RUN, Seq(BoltString(statement), BoltMap(parameters.map(e => BoltString(e._1) -> e._2)))))

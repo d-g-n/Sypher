@@ -98,6 +98,8 @@ object BoltStructureCodec extends Codec[BoltStructure] {
         } else {
           Attempt.failure(Err("Can't encode a BoltStructure longer than 65535 individual fields"))
         }
+      case bm: BoltMessage =>
+        BoltMessageCodec.encode(bm)
     }
   }
 

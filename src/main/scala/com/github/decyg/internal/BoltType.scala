@@ -42,7 +42,7 @@ case class BoltSuccess(metadata: Map[String, BoltType]) extends BoltMessage
 case class BoltFailure(metadata: Map[String, BoltType]) extends BoltMessage
 case class BoltIgnored() extends BoltMessage
 
-case class BoltTransferEncoding(message: BoltType)
+case class BoltTransferEncoding(message: BoltMessage)
 
 object BoltType {
 
