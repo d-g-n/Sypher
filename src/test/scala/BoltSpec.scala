@@ -5,7 +5,7 @@ import scodec.Codec
 
 import scala.io.StdIn
 import BoltType._
-import com.github.decyg.internal.codecs.BoltMessageCodec
+import com.github.decyg.internal.codecs.{BoltMessageCodec, BoltTransferCodec}
 import scodec.bits._
 import scodec.codecs._
 import shapeless.Typeable
@@ -151,5 +151,19 @@ class BoltSpec extends FlatSpec{
 
     assert(!invalidDecode.isSuccessful)
 
+  }
+
+  it should "be able to handle encoding and decoding of messages vice versa" in {
+
+    val bType1 = BoltMap(Map(BoltString("one two three") -> BoltMap(Map(BoltNull() -> BoltString("inner map"))), BoltList(List(BoltNull(), BoltInteger(100), BoltString("inner string"))) -> BoltBoolean(true)))
+
+    val bType1Encode = BoltTransferCodec.encode(BoltTransferEncoding(bType1))
+
+    assert(bType1Encode.isSuccessful)
+
+    val bType1Decode = BoltTransferCodec.decode(bType1Encode.require)
+
+    assert(bType1Decode.isSuccessful)
+    assert(bType1Decode.require.value.message == bType1)
   }
 }

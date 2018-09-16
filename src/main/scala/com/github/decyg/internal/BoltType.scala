@@ -42,6 +42,8 @@ case class BoltSuccess(metadata: Map[String, BoltType]) extends BoltMessage
 case class BoltFailure(metadata: Map[String, BoltType]) extends BoltMessage
 case class BoltIgnored() extends BoltMessage
 
+case class BoltTransferEncoding(message: BoltType)
+
 object BoltType {
 
   def typedListCodec[T <: BoltType](t: Typeable[T]): Codec[BoltList] = {
